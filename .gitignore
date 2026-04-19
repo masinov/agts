@@ -191,6 +191,10 @@ cython_debug/
 # Ruff stuff:
 .ruff_cache/
 
+# AGTS run artifacts
+.tot/
+.research/
+
 # PyPI configuration file
 .pypirc
 

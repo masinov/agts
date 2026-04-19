@@ -1,0 +1,35 @@
+{
+  "task": {
+    "name": "research-smoke",
+    "description": "Validate that agts-research can create a branch worktree and score one attempt.",
+    "objective": "maximize evaluator score"
+  },
+  "workspace": {
+    "seed_path": "examples/research_smoke/seed",
+    "results_dir": ".research/runs"
+  },
+  "evaluator": {
+    "type": "command",
+    "command": "python solution.py",
+    "timeout": 30,
+    "direction": "maximize"
+  },
+  "agents": {
+    "runtime": "claude_code",
+    "model": "minimax-2.7",
+    "max_agents": 1,
+    "launch": false
+  },
+  "workers": {
+    "local_agts": {
+      "enabled": true,
+      "mode": "optional",
+      "max_steps": 2
+    }
+  },
+  "search": {
+    "max_branches": 4,
+    "max_active_branches": 2,
+    "max_evals": 5
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "task": {
+    "name": "bin-packing-heuristic-optimization",
+    "description": "Improve solver.py for one-dimensional bin packing. The solver receives JSON instances with item sizes and capacity, and must output valid bins as lists of original item indices. Optimize for fewer bins first and runtime second. Public instances are visible in benchmarks/bin_packing/public_instances.json; the evaluator scores on a private set.",
+    "objective": "maximize score = lower_bound_total / candidate_bins - small runtime penalty"
+  },
+  "workspace": {
+    "seed_path": "benchmarks/bin_packing/seed",
+    "results_dir": ".research/runs"
+  },
+  "evaluator": {
+    "type": "command",
+    "command": "python /home/datision/projects/agts/benchmarks/bin_packing/eval.py",
+    "timeout": 20,
+    "direction": "maximize",
+    "private_paths": [
+      "benchmarks/bin_packing/private_instances.json"
+    ]
+  },
+  "agents": {
+    "runtime": "claude_code",
+    "model": "minimax-2.7",
+    "max_agents": 2,
+    "max_turns": 80,
+    "launch": false
+  },
+  "workers": {
+    "local_agts": {
+      "enabled": true,
+      "mode": "optional",
+      "max_steps": 3,
+      "before_eval": true,
+      "after_failed_eval": true,
+      "before_pivot": true
+    }
+  },
+  "search": {
+    "max_branches": 4,
+    "max_active_branches": 2,
+    "max_agents_per_branch": 1,
+    "max_evals": 20,
+    "split_threshold": 0.62,
+    "stop_threshold": 0.18,
+    "verify_before_finalize": true
+  },
+  "heartbeat": {
+    "reflect_every": 1,
+    "consolidate_every": 4,
+    "pivot_after_stall": 3
+  }
+}
