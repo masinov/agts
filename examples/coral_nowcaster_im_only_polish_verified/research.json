@@ -1,0 +1,59 @@
+{
+  "task": {
+    "name": "coral_nowcaster_im_only_polish_verified",
+    "description": "Fineness nowcaster experiment using PBM features from im_only_polish.json, matching CORAL experiment coral_nowcaster_im_only_polish_verified. Train models on train_samples.csv.gz + dev_samples.csv.gz, predict hidden_eval_features.csv.gz. Baseline hidden RMSE: 2.8748.",
+    "objective": "minimize hidden_eval_rmse"
+  },
+  "workspace": {
+    "seed_path": "examples/coral_nowcaster_im_only_polish_verified",
+    "results_dir": ".research/runs"
+  },
+  "evaluator": {
+    "type": "command",
+    "command": "bash -c 'cd /home/datision/projects/molcia_ia/agts && /home/datision/projects/molcia_ia/.venv/bin/python examples/coral_nowcaster_im_only_polish_verified/solution.py --predict examples/coral_nowcaster_im_only_polish_verified/seed/eval/answers/hidden_eval_features.csv.gz --out /tmp/hidden_eval_predictions.csv && /home/datision/projects/molcia_ia/.venv/bin/python examples/coral_nowcaster_im_only_polish_verified/eval.py'",
+    "timeout": 120,
+    "direction": "minimize",
+    "private_paths": [
+      "examples/coral_nowcaster_im_only_polish_verified/seed/eval/answers"
+    ],
+    "holdout_paths": [
+      "examples/coral_nowcaster_im_only_polish_verified/seed/eval/answers/hidden_eval_targets.csv.gz"
+    ]
+  },
+  "agents": {
+    "runtime": "claude_code",
+    "model": "minimax-2.7",
+    "max_agents": 2,
+    "max_turns": 150,
+    "launch": false,
+    "sandbox": false,
+    "roles": [
+      "research_worker",
+      "implementation_worker"
+    ]
+  },
+  "workers": {
+    "local_agts": {
+      "enabled": true,
+      "mode": "optional",
+      "max_steps": 4,
+      "before_eval": true,
+      "after_failed_eval": true,
+      "before_pivot": true
+    }
+  },
+  "search": {
+    "max_branches": 6,
+    "max_active_branches": 3,
+    "max_agents_per_branch": 1,
+    "max_evals": 40,
+    "split_threshold": 0.65,
+    "stop_threshold": 0.18,
+    "verify_before_finalize": true
+  },
+  "heartbeat": {
+    "reflect_every": 1,
+    "consolidate_every": 5,
+    "pivot_after_stall": 3
+  }
+}
