@@ -1,0 +1,40 @@
+{
+  "instances": [
+    {
+      "id": "public-small-ratio-trap",
+      "capacity": 10,
+      "items": [
+        {"weight": 6, "value": 13},
+        {"weight": 5, "value": 11},
+        {"weight": 5, "value": 11},
+        {"weight": 4, "value": 7},
+        {"weight": 3, "value": 5}
+      ]
+    },
+    {
+      "id": "public-balanced",
+      "capacity": 18,
+      "items": [
+        {"weight": 9, "value": 20},
+        {"weight": 8, "value": 17},
+        {"weight": 7, "value": 15},
+        {"weight": 6, "value": 13},
+        {"weight": 5, "value": 9},
+        {"weight": 4, "value": 7}
+      ]
+    },
+    {
+      "id": "public-many-small",
+      "capacity": 15,
+      "items": [
+        {"weight": 2, "value": 3},
+        {"weight": 3, "value": 5},
+        {"weight": 4, "value": 8},
+        {"weight": 5, "value": 9},
+        {"weight": 8, "value": 14},
+        {"weight": 9, "value": 16},
+        {"weight": 6, "value": 10}
+      ]
+    }
+  ]
+}

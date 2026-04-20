@@ -70,6 +70,17 @@ class ResearchCost:
 
 
 @dataclass
+class ScoreBundle:
+    primary: float | None = None
+    direction: str = "maximize"
+    split: str = "private_dev"
+    metrics: dict[str, Any] = field(default_factory=dict)
+    valid: bool = True
+    failure_reason: str = ""
+    raw_feedback: str = ""
+
+
+@dataclass
 class LocalAgtsConfig:
     enabled: bool = True
     mode: str = "optional"  # optional | required | disabled
@@ -94,8 +105,11 @@ class AgentSpec:
     started_at: float | None = None
     stopped_at: float | None = None
     exit_code: int | None = None
+    exit_classification: str = ""
     launch_command: list[str] = field(default_factory=list)
     timeout_seconds: float | None = None
+    accounted_wall_seconds: float = 0.0
+    accounted_tokens: int = 0
 
 
 @dataclass
@@ -112,6 +126,8 @@ class ResearchBranchSummary:
     main_risk: str = ""
     recommended_action: str = "continue"
     recommended_split_directions: list[str] = field(default_factory=list)
+    value_of_information: float = 0.0
+    policy_reason: str = ""
 
 
 @dataclass

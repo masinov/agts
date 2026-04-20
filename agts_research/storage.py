@@ -20,6 +20,7 @@ PUBLIC_DIRS = [
     "summaries",
     "agents",
     "heartbeat",
+    "evaluator",
 ]
 
 
@@ -102,6 +103,9 @@ def branch_snapshots(state: ResearchRunState) -> list[dict[str, Any]]:
             "status": branch.status.value,
             "best_attempt_id": branch.best_attempt_id,
             "value_estimate": branch.value_estimate,
+            "value_of_information": branch.summary.value_of_information if branch.summary else 0.0,
+            "uncertainty": branch.uncertainty,
+            "novelty": branch.novelty,
             "eval_count": branch.eval_count,
             "evals_since_improvement": branch.evals_since_improvement,
             "worktree_path": branch.worktree_path,

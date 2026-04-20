@@ -53,16 +53,7 @@ def start_research_run(cfg: ResearchConfig) -> ResearchRunState:
     worktree = create_branch_worktree(run_dir, repo_dir, branch.branch_id)
     branch.worktree_path = str(worktree)
 
-    agent_id = f"agent-{branch.branch_id}-a"
-    agent = AgentSpec(
-        agent_id=agent_id,
-        branch_id=branch.branch_id,
-        role="research_worker",
-        runtime=cfg.agents.runtime,
-        model=cfg.agents.model,
-        worktree_path=str(worktree),
-    )
-    branch.assigned_agents.append(agent_id)
+    agents = create_branch_agents(cfg, branch, worktree)
 
     state = ResearchRunState(
         run_id=run_id,
@@ -72,9 +63,10 @@ def start_research_run(cfg: ResearchConfig) -> ResearchRunState:
         repo_dir=str(repo_dir),
         created_at=time.time(),
         branches={branch.branch_id: branch},
-        agents={agent_id: agent},
+        agents={agent.agent_id: agent for agent in agents},
     )
-    write_worker_files(cfg, run_dir, branch, agent)
+    if agents:
+        write_worker_files(cfg, run_dir, branch, agents[0])
     _commit_branch_setup(worktree)
     write_json_atomic(run_dir / "config.json", cfg.to_dict())
     write_state(run_dir, state)
@@ -124,18 +116,22 @@ def write_worker_files(
     (worktree / ".agts_agent_id").write_text(agent.agent_id, encoding="utf-8")
     (worktree / "AGTS_RESEARCH.md").write_text(branch_brief(branch), encoding="utf-8")
     (worktree / "CLAUDE.md").write_text(
-        worker_instructions(cfg, branch, agent_id=agent.agent_id, shared_dir_name=shared_dir.name),
+        worker_instructions(
+            cfg,
+            branch,
+            agent_id=agent.agent_id,
+            agent_role=agent.role,
+            shared_dir_name=shared_dir.name,
+        ),
         encoding="utf-8",
     )
+    _ensure_worktree_gitignore(worktree)
     _write_worktree_helper(worktree)
     notes_dir = shared_dir / "notes" / branch.branch_id
     notes_dir.mkdir(parents=True, exist_ok=True)
     latest_note = notes_dir / "latest.md"
     if not latest_note.exists():
-        latest_note.write_text(
-            f"# Branch {branch.branch_id} Notes\n\nNo work recorded yet.\n",
-            encoding="utf-8",
-        )
+        latest_note.write_text(_branch_note_template(branch), encoding="utf-8")
 
 
 def find_run_dir_from_worktree(workdir: Path) -> Path:
@@ -154,6 +150,35 @@ def read_worktree_identity(workdir: Path) -> tuple[str, str]:
         branch.read_text(encoding="utf-8").strip(),
         agent.read_text(encoding="utf-8").strip(),
     )
+
+
+def create_branch_agents(cfg: ResearchConfig, branch: ResearchBranch, worktree: Path) -> list[AgentSpec]:
+    roles = _agent_roles(cfg)
+    agents: list[AgentSpec] = []
+    for index, role in enumerate(roles):
+        suffix = chr(ord("a") + index)
+        agent_id = f"agent-{branch.branch_id}-{suffix}"
+        agent = AgentSpec(
+            agent_id=agent_id,
+            branch_id=branch.branch_id,
+            role=role,
+            runtime=cfg.agents.runtime,
+            model=cfg.agents.model,
+            worktree_path=str(worktree),
+        )
+        branch.assigned_agents.append(agent_id)
+        agents.append(agent)
+    return agents
+
+
+def _agent_roles(cfg: ResearchConfig) -> list[str]:
+    limit = max(1, min(cfg.search.max_agents_per_branch, cfg.agents.max_agents))
+    roles = [role for role in cfg.agents.roles if role]
+    if not roles:
+        roles = ["research_worker"]
+    if "research_worker" not in roles:
+        roles.insert(0, "research_worker")
+    return roles[:limit]
 
 
 def _copy_seed(seed_path: Path, repo_dir: Path) -> None:
@@ -178,7 +203,7 @@ def _copy_seed(seed_path: Path, repo_dir: Path) -> None:
 
 def _copy_private(cfg: ResearchConfig, run_dir: Path) -> None:
     private_root = run_dir / "private"
-    for raw in cfg.evaluator.private_paths:
+    for raw in [*cfg.evaluator.private_paths, *cfg.evaluator.holdout_paths]:
         src = Path(raw).resolve()
         if not src.exists():
             continue
@@ -272,3 +297,43 @@ def _commit_branch_setup(worktree: Path) -> None:
         capture_output=True,
         text=True,
     )
+
+
+def _ensure_worktree_gitignore(worktree: Path) -> None:
+    path = worktree / ".gitignore"
+    existing = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    needed = [".tot/", ".research/"]
+    changed = False
+    for item in needed:
+        if item not in existing:
+            existing.append(item)
+            changed = True
+    if changed:
+        path.write_text("\n".join(existing).rstrip() + "\n", encoding="utf-8")
+
+
+def _branch_note_template(branch: ResearchBranch) -> str:
+    return f"""# Branch {branch.branch_id} Notes
+
+## Current Hypothesis
+{branch.hypothesis}
+
+## Latest Work
+No work recorded yet.
+
+## Evidence
+- none
+
+## Failed Assumptions
+- none
+
+## Local AGTS
+- used: no
+- runs: none
+
+## Recommended Next Action
+continue
+
+## Open Questions
+- none
+"""

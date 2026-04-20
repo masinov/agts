@@ -81,6 +81,12 @@ Inspect and advance the meta-controller:
 ```bash
 python -m agts.cli research status <run_dir>
 python -m agts.cli research summarize <run_dir>
+python -m agts.cli research distill <run_dir>
+python -m agts.cli research review <run_dir>
+python -m agts.cli research provenance <run_dir>
+python -m agts.cli research validate-memory <run_dir>
+python -m agts.cli research clean-memory <run_dir>
+python -m agts.cli research report <run_dir>
 python -m agts.cli research step <run_dir>
 ```
 
@@ -97,10 +103,42 @@ and launches selected worker turns:
 python -m agts.cli research monitor <run_dir> --iterations 10 --interval 5 --worker-timeout 600
 ```
 
+Claude Code workers run in a `bwrap` sandbox by default when configured. Hidden evaluator files
+are masked from the worker. Worker calls to `./agts-research eval` go through a supervisor-side
+eval queue under `public/evaluator/`, so private-dev scoring can run without exposing private data
+inside the worker sandbox.
+
+Shared-memory artifacts record provenance in `public/evidence/provenance.jsonl`.
+Heartbeat launches record prompt hashes and trigger reasons in `public/heartbeat/actions.jsonl`.
+Use `validate-memory` to check branch notes, skill files, and evidence artifacts before relying
+on them for distillation or final reporting. `clean-memory` is report-only by default; pass
+`--apply` to quarantine invalid shared-memory files under `public/evidence/quarantine/`.
+
+Run a supervisor-only final holdout after a candidate is selected:
+
+```bash
+python -m agts.cli research verify <run_dir>
+python -m agts.cli research final-eval <run_dir> -m "final holdout"
+```
+
+Print the benchmark report after private-dev and final-holdout evals:
+
+```bash
+python -m agts.cli research report <run_dir>
+python -m agts.cli research report <run_dir> --json
+```
+
 Dry-run monitor mode uses harmless short-lived worker processes:
 
 ```bash
 python -m agts.cli research monitor <run_dir> --iterations 2 --interval 0.5 --dry-run --dry-run-seconds 0.1
+```
+
+Included benchmark configs:
+
+```bash
+python -m agts.cli research start -c benchmarks/bin_packing/research.json
+python -m agts.cli research start -c benchmarks/knapsack/research.json
 ```
 
 Launch managed workers:
@@ -131,6 +169,21 @@ Research artifacts live under `.research/runs/<run_id>/`:
 - `public/attempts/` for scored attempts
 - `public/notes/` and `public/skills/` for shared memory
 - `public/agents/` for worker logs and process metadata
+- `public/evaluator/` for supervisor eval requests and responses
+- `private/` for private-dev and final-holdout material, masked from workers
 - `worktrees/` for branch-local execution
 
 Workers may use local AGTS when configured, but `agts-research` does not require it.
+When a worker creates `.tot/runs/...` artifacts inside its branch worktree, eval submission
+automatically records those paths in the research attempt's `local_agts_runs` field and marks
+`metadata.local_agts_used`.
+
+Branch notes use a stable `latest.md` schema with sections for latest work, evidence, failed
+assumptions, local AGTS usage, recommended next action, and open questions. Summaries and reports
+consume those sections as shared memory.
+
+Run the core local tests:
+
+```bash
+python -m unittest discover -s tests
+```

@@ -14,105 +14,142 @@ This tracks remaining work for `agts-research`, separate from the local `agts` t
 - `[x]` Print monitor tick progress by default.
 - `[x]` Add real worker turn validation.
 - `[x]` Launch Claude Code workers with non-interactive permission mode.
-- `[~]` Test a real `agts research monitor` run with Claude workers editing, evaluating, and writing notes.
-- `[ ]` Add interactive/resumable sessions:
-  - session id capture
-  - resume command
-  - graceful interrupt
-  - relaunch with prior session
-  - turn limits
-  - timeout handling
+- `[x]` Test a real `agts research monitor` run with Claude workers editing, evaluating, and writing notes.
+- `[x]` Add interactive/resumable sessions:
+  - `[x]` session id capture
+  - `[x]` resume command
+  - `[x]` graceful interrupt
+  - `[x]` relaunch with prior session
+  - `[x]` turn limits
+  - `[x]` timeout handling
 - `[~]` Improve process supervision:
   - `[x]` log tail command
   - `[x]` worker timeout
-  - auto-stop on monitor exit option
-  - crash classification
+  - `[x]` auto-stop on monitor exit option
+  - `[x]` crash classification
   - `[x]` process metadata refresh after exit
   - `[x]` stale PID reuse protection
   - `[x]` per-launch log files
+  - `[x]` local subprocess reaping and exit-code capture
 
 ## Evaluator
 
-- `[ ]` Harden evaluator command execution.
-- `[ ]` Wire private eval directories into worker/evaluator layout.
-- `[ ]` Add richer `ScoreBundle`-style results.
-- `[ ]` Support held-out/public evaluation split.
-- `[ ]` Support structured feedback JSON.
-- `[ ]` Improve timeout and failure classification.
+- `[x]` Harden evaluator command execution.
+- `[x]` Serialize eval submissions with a run-level eval lock.
+- `[x]` Use unique evaluator temp files so concurrent eval splits cannot collide.
+- `[x]` Wire private eval directories into worker/evaluator layout.
+- `[x]` Add worker sandbox masking for private-dev and final-holdout files.
+- `[x]` Route worker evals through a supervisor-side eval queue.
+- `[x]` Add supervisor-only final holdout evaluation command.
+- `[x]` Block final holdout evaluation from inside worker sandboxes.
+- `[x]` Add richer `ScoreBundle`-style results.
+- `[x]` Support held-out/public evaluation split.
+- `[x]` Support structured feedback JSON.
+- `[x]` Improve timeout and failure classification.
 - `[x]` Commit branch scaffolding before first eval so baseline attempts do not attribute helper files as research edits.
+- `[x]` Block private-dev evals on finalized/stopped branches.
 
 ## Branching And Meta-Control
 
-- `[ ]` Improve branch splitting quality:
-  - LLM-generated split briefs
-  - evidence-aware split directions
-  - branch novelty comparison
-  - branch merge/distill actions
-- `[ ]` Improve branch summarization from:
-  - notes
-  - diffs
-  - eval logs
-  - failed approaches
-  - local AGTS runs
+- `[x]` Improve research policy beyond simple continue/split/stop:
+  - `[x]` value-of-information scoring
+  - `[x]` novelty penalties for near-duplicate branches
+  - `[x]` stall-aware pivot selection
+  - `[x]` explicit exploration vs exploitation budget allocation
+- `[x]` Improve branch splitting quality:
+  - `[x]` evidence-generated split briefs
+  - `[x]` evidence-aware split directions
+  - `[x]` branch novelty comparison
+  - `[x]` branch merge/distill actions
+- `[~]` Add verifier-gated finalization:
+  - `[x]` private-dev best candidate selection
+  - `[x]` verifier review before final holdout
+  - `[x]` final holdout only after supervisor approval
+  - `[x]` verifier approval is consumed by the first final-holdout eval
+  - `[x]` final report compares private-dev best vs final-holdout score
+- `[~]` Improve branch summarization from:
+  - `[x]` notes
+  - `[x]` diffs
+  - `[x]` eval logs
+  - `[x]` failed approaches
+  - `[x]` local AGTS runs
   - citations/research evidence
-- `[ ]` Add richer agent roles:
-  - critic workers
-  - verifier workers
-  - literature workers
-  - implementation workers
-  - distillation workers
+- `[~]` Add richer agent roles:
+  - `[x]` critic workers
+  - `[x]` verifier workers
+  - `[x]` literature workers
+  - `[x]` implementation workers
+  - `[x]` distillation workers
 
 ## Local AGTS Integration
 
-- `[ ]` Automatically detect and link `.tot/runs/...` artifacts into research attempt metadata.
-- `[ ]` Track whether local AGTS was used by a worker and whether it improved downstream attempts.
+- `[x]` Automatically detect and link `.tot/runs/...` artifacts into research attempt metadata.
+- `[x]` Track whether local AGTS was used by a worker and whether it improved downstream attempts.
+- `[x]` Keep `.tot/` local AGTS artifacts out of branch commits and changed-file reporting.
+- `[x]` Expose local AGTS usage in branch summaries and final reports.
+- `[x]` Add worker heartbeat prompts that recommend local AGTS only at high-value checkpoints.
 
 ## Shared Memory
 
-- `[ ]` Add note schema and branch-note conventions.
-- `[ ]` Add provenance conventions for notes, skills, and evidence.
-- `[ ]` Add skill validation.
-- `[ ]` Add stale/bad-note cleanup.
-- `[ ]` Add global consolidation artifacts.
+- `[x]` Add note schema and branch-note conventions.
+- `[x]` Add provenance conventions for notes, skills, and evidence.
+- `[x]` Add skill validation.
+- `[x]` Add stale/bad-note cleanup.
+- `[x]` Add global consolidation artifacts.
 
 ## Heartbeats
 
-- `[ ]` Make heartbeat actions first-class action records.
-- `[ ]` Add configurable heartbeat action registry.
-- `[ ]` Persist heartbeat trigger history.
+- `[x]` Make heartbeat actions first-class action records.
+- `[x]` Add configurable heartbeat action registry.
+- `[x]` Persist heartbeat trigger history.
 
 ## Resource Accounting
 
-- `[ ]` Track token usage.
-- `[ ]` Track wall-clock budgets.
-- `[ ]` Track per-branch agent time.
-- `[ ]` Enforce max active workers.
-- `[ ]` Add global budget stop conditions beyond eval count.
+- `[x]` Track token usage.
+- `[x]` Track wall-clock budgets.
+- `[x]` Track per-branch agent time.
+- `[x]` Enforce max active workers.
+- `[x]` Add global budget stop conditions beyond eval count.
 
 ## Tests
 
-- `[ ]` Add automated tests for config loading.
-- `[ ]` Add automated tests for run creation.
-- `[ ]` Add automated tests for worktree isolation.
-- `[ ]` Add automated tests for eval submission.
-- `[ ]` Add automated tests for score parsing.
-- `[ ]` Add automated tests for meta step decisions.
-- `[ ]` Add automated tests for monitor duplicate prevention.
-- `[ ]` Add automated tests for JSON artifact validity.
+- `[x]` Add automated tests for config loading.
+- `[x]` Add automated tests for run creation.
+- `[x]` Add automated tests for worktree isolation.
+- `[x]` Add automated tests for eval submission.
+- `[x]` Add automated tests for score parsing.
+- `[x]` Add automated tests for meta step decisions.
+- `[x]` Add automated tests for monitor duplicate prevention.
+- `[x]` Add automated tests for JSON artifact validity.
+  - `[x]` provenance and memory-validation artifacts
+  - `[x]` heartbeat action records
+  - `[x]` monitor/event/report artifact sweep
 
 ## Benchmarks
 
 - `[x]` Add first benchmark: 1D bin packing heuristic optimization.
 - `[x]` Run full Claude worker benchmark on bin packing.
+- `[x]` Add benchmark report command:
+  - public/private-dev/final-holdout split metadata
+  - best private-dev attempt
+  - final-holdout attempt
+  - eval budget used
+  - local AGTS usage
+  - branch lineage and notes
+- `[ ]` Add additional benchmark domains:
+  - `[x]` algorithmic optimization: 0/1 knapsack heuristic optimization
+  - code repair with hidden tests
+  - transformer/kernel optimization
+  - literature synthesis with citation checks
 
 ## Current Next Step
 
-Add real worker turn validation and log tooling:
+Harden shared-memory maintenance and heartbeat policy configuration.
 
-- `[x]` `agts research logs <run_dir> [--agent-id ...]`
-- `[x]` `agts research launch --timeout ...`
-- `[ ]` real Claude dry-smoke prompt that only reads/writes notes, not code
-- `[x]` verify Claude can write a branch note and optionally submit one eval
-- `[x]` capture session id if emitted
+- `[x]` record provenance for eval logs, reviews, verifier artifacts, split briefs, and distillations
+- `[x]` add shared-memory validation for notes, skills, and evidence
+- `[x]` persist heartbeat action records with trigger names and prompt hashes
+- `[x]` add stale/bad-note cleanup or quarantine
+- `[x]` make heartbeat triggers configurable instead of hard-coded
 
-Next, run the bounded `monitor` path again with Claude workers now that `advance` is validated, then add automatic linking of local AGTS runs into research attempts. That link is central to the design: meta-research outside, local AGTS optionally inside each worker.
+Next, add a code-repair benchmark with hidden tests or a literature-synthesis benchmark with citation checks.

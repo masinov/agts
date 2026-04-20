@@ -26,9 +26,11 @@ class ResearchWorkspaceConfig:
 class ResearchEvaluatorConfig:
     type: str = "none"  # none | command
     command: str = ""
+    final_command: str = ""
     timeout: int = 300
     direction: str = "maximize"  # maximize | minimize
     private_paths: list[str] = field(default_factory=list)
+    holdout_paths: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -38,6 +40,9 @@ class ResearchAgentsConfig:
     max_agents: int = 1
     max_turns: int = 200
     launch: bool = False
+    sandbox: bool = True
+    sandbox_backend: str = "bwrap"
+    roles: list[str] = field(default_factory=lambda: ["research_worker"])
 
 
 @dataclass
@@ -46,6 +51,8 @@ class ResearchSearchConfig:
     max_active_branches: int = 4
     max_agents_per_branch: int = 1
     max_evals: int = 40
+    max_agent_turns: int = 0
+    max_wall_seconds: float = 0.0
     split_threshold: float = 0.68
     stop_threshold: float = 0.20
     verify_before_finalize: bool = True
@@ -56,6 +63,15 @@ class ResearchHeartbeatConfig:
     reflect_every: int = 1
     consolidate_every: int = 5
     pivot_after_stall: int = 3
+    trigger_registry: dict[str, str] = field(
+        default_factory=lambda: {
+            "baseline": "first evaluated attempt for a branch",
+            "stall_or_pivot": "branch is stalled or selected for pivot analysis",
+            "split_followup": "new branch created from a split action",
+            "verification": "branch is near finalization or needs verifier attention",
+            "continue": "ordinary branch-local research step",
+        }
+    )
 
 
 @dataclass

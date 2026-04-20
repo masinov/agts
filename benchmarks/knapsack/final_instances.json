@@ -1,0 +1,33 @@
+{
+  "instances": [
+    {
+      "id": "final-tight",
+      "capacity": 31,
+      "items": [
+        {"weight": 16, "value": 31},
+        {"weight": 15, "value": 30},
+        {"weight": 14, "value": 28},
+        {"weight": 13, "value": 25},
+        {"weight": 11, "value": 22},
+        {"weight": 10, "value": 19},
+        {"weight": 6, "value": 11}
+      ]
+    },
+    {
+      "id": "final-large",
+      "capacity": 60,
+      "items": [
+        {"weight": 30, "value": 59},
+        {"weight": 28, "value": 55},
+        {"weight": 26, "value": 52},
+        {"weight": 24, "value": 47},
+        {"weight": 20, "value": 39},
+        {"weight": 18, "value": 34},
+        {"weight": 12, "value": 22},
+        {"weight": 9, "value": 16},
+        {"weight": 7, "value": 12},
+        {"weight": 5, "value": 8}
+      ]
+    }
+  ]
+}

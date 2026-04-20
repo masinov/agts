@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import math
 import os
 import subprocess
 import sys
@@ -16,31 +15,38 @@ FINAL = ROOT / "final_instances.json"
 PUBLIC = ROOT / "public_instances.json"
 
 
-def lower_bound(items: list[float], capacity: float) -> int:
-    return math.ceil(sum(items) / capacity)
+def optimal_value(instance: dict) -> int:
+    capacity = int(instance["capacity"])
+    dp = [0] * (capacity + 1)
+    for item in instance["items"]:
+        weight = int(item["weight"])
+        value = int(item["value"])
+        for remaining in range(capacity, weight - 1, -1):
+            dp[remaining] = max(dp[remaining], dp[remaining - weight] + value)
+    return max(dp)
 
 
-def validate_solution(instance: dict, bins: list[list[int]]) -> tuple[bool, str, int]:
-    items = [float(item) for item in instance["items"]]
-    capacity = float(instance.get("capacity", 1.0))
-    seen: list[int] = []
-    for bin_no, bin_items in enumerate(bins):
-        total = 0.0
-        for index in bin_items:
-            if not isinstance(index, int) or index < 0 or index >= len(items):
-                return False, f"invalid item index {index} in bin {bin_no}", 0
-            seen.append(index)
-            total += items[index]
-        if total > capacity + 1e-9:
-            return False, f"bin {bin_no} exceeds capacity: {total}", 0
-    if sorted(seen) != list(range(len(items))):
-        return False, "items are missing or duplicated", 0
-    return True, "", len(bins)
+def validate_solution(instance: dict, selected: list[int]) -> tuple[bool, str, int, int]:
+    items = instance["items"]
+    if not isinstance(selected, list):
+        return False, "solution items must be a list", 0, 0
+    seen: set[int] = set()
+    total_weight = 0
+    total_value = 0
+    for index in selected:
+        if not isinstance(index, int) or index < 0 or index >= len(items):
+            return False, f"invalid item index {index}", 0, 0
+        if index in seen:
+            return False, f"duplicate item index {index}", 0, 0
+        seen.add(index)
+        total_weight += int(items[index]["weight"])
+        total_value += int(items[index]["value"])
+    if total_weight > int(instance["capacity"]):
+        return False, f"capacity exceeded: {total_weight}", 0, 0
+    return True, "", total_weight, total_value
 
 
 def load_instances() -> dict:
-    # The supervisor sets AGTS_PRIVATE_DIR when evaluating a research run.
-    # Workers should only see aggregate feedback from this script.
     split = os.environ.get("AGTS_EVAL_SPLIT", "private_dev")
     private_dir = Path(os.environ.get("AGTS_PRIVATE_DIR", ROOT))
     filename = "final_instances.json" if split == "final_holdout" else "private_instances.json"
@@ -66,7 +72,7 @@ def run_solver(instances_path: Path) -> tuple[dict, float]:
 
 def main() -> int:
     data = load_instances()
-    tmp_path = Path(f".agts_bin_packing_eval_instances_{os.getpid()}_{uuid.uuid4().hex}.json").resolve()
+    tmp_path = Path(f".agts_knapsack_eval_instances_{os.getpid()}_{uuid.uuid4().hex}.json").resolve()
     tmp_path.write_text(json.dumps(data), encoding="utf-8")
     try:
         output, elapsed = run_solver(tmp_path)
@@ -76,21 +82,23 @@ def main() -> int:
         except OSError:
             pass
 
-    by_id = {solution["id"]: solution["bins"] for solution in output.get("solutions", [])}
-    total_bins = 0
-    total_lb = 0
-    invalid = []
+    by_id = {solution["id"]: solution.get("items", []) for solution in output.get("solutions", [])}
+    invalid: list[str] = []
+    total_value = 0
+    total_optimal = 0
+    total_weight = 0
     for instance in data["instances"]:
-        bins = by_id.get(instance["id"])
-        if bins is None:
+        selected = by_id.get(instance["id"])
+        if selected is None:
             invalid.append(f"missing solution for {instance['id']}")
             continue
-        ok, reason, count = validate_solution(instance, bins)
+        ok, reason, weight, value = validate_solution(instance, selected)
         if not ok:
             invalid.append(f"{instance['id']}: {reason}")
             continue
-        total_bins += count
-        total_lb += lower_bound(instance["items"], float(instance.get("capacity", 1.0)))
+        total_weight += weight
+        total_value += value
+        total_optimal += optimal_value(instance)
 
     if invalid:
         bundle = {
@@ -99,20 +107,19 @@ def main() -> int:
             "failure_reason": "invalid solution",
             "metrics": {
                 "invalid_count": len(invalid),
-                "total_bins": total_bins,
-                "lower_bound": total_lb,
+                "total_value": total_value,
+                "optimal_value": total_optimal,
                 "elapsed_seconds": elapsed,
             },
         }
         print(f"AGTS_SCORE_BUNDLE={json.dumps(bundle, sort_keys=True)}")
         print("score: 0.0")
-        print("invalid:")
         for item in invalid[:10]:
             print(f"- {item}")
         return 0
 
-    quality = total_lb / max(1, total_bins)
-    runtime_penalty = min(0.05, elapsed / 200.0)
+    quality = total_value / max(1, total_optimal)
+    runtime_penalty = min(0.03, elapsed / 300.0)
     score = max(0.0, quality - runtime_penalty)
     bundle = {
         "score": score,
@@ -120,16 +127,17 @@ def main() -> int:
         "metrics": {
             "quality": quality,
             "runtime_penalty": runtime_penalty,
-            "total_bins": total_bins,
-            "lower_bound": total_lb,
+            "total_value": total_value,
+            "optimal_value": total_optimal,
+            "total_weight": total_weight,
             "elapsed_seconds": elapsed,
             "instance_count": len(data["instances"]),
         },
     }
     print(f"AGTS_SCORE_BUNDLE={json.dumps(bundle, sort_keys=True)}")
     print(f"score: {score:.8f}")
-    print(f"total_bins: {total_bins}")
-    print(f"lower_bound: {total_lb}")
+    print(f"total_value: {total_value}")
+    print(f"optimal_value: {total_optimal}")
     print(f"elapsed_seconds: {elapsed:.6f}")
     print(f"public_instances: {PUBLIC}")
     return 0

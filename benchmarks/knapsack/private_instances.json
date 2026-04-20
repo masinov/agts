@@ -1,0 +1,46 @@
+{
+  "instances": [
+    {
+      "id": "private-density-mislead",
+      "capacity": 24,
+      "items": [
+        {"weight": 12, "value": 24},
+        {"weight": 11, "value": 23},
+        {"weight": 10, "value": 21},
+        {"weight": 9, "value": 18},
+        {"weight": 8, "value": 16},
+        {"weight": 7, "value": 13},
+        {"weight": 6, "value": 12}
+      ]
+    },
+    {
+      "id": "private-wide",
+      "capacity": 35,
+      "items": [
+        {"weight": 20, "value": 38},
+        {"weight": 18, "value": 35},
+        {"weight": 17, "value": 32},
+        {"weight": 15, "value": 29},
+        {"weight": 14, "value": 28},
+        {"weight": 9, "value": 16},
+        {"weight": 8, "value": 15},
+        {"weight": 6, "value": 10}
+      ]
+    },
+    {
+      "id": "private-combinational",
+      "capacity": 50,
+      "items": [
+        {"weight": 23, "value": 46},
+        {"weight": 21, "value": 43},
+        {"weight": 19, "value": 38},
+        {"weight": 17, "value": 34},
+        {"weight": 13, "value": 24},
+        {"weight": 11, "value": 21},
+        {"weight": 7, "value": 13},
+        {"weight": 5, "value": 9},
+        {"weight": 4, "value": 7}
+      ]
+    }
+  ]
+}

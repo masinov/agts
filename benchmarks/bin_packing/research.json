@@ -11,10 +11,14 @@
   "evaluator": {
     "type": "command",
     "command": "python /home/datision/projects/agts/benchmarks/bin_packing/eval.py",
+    "final_command": "python /home/datision/projects/agts/benchmarks/bin_packing/eval.py",
     "timeout": 20,
     "direction": "maximize",
     "private_paths": [
       "benchmarks/bin_packing/private_instances.json"
+    ],
+    "holdout_paths": [
+      "benchmarks/bin_packing/final_instances.json"
     ]
   },
   "agents": {
@@ -22,7 +26,9 @@
     "model": "minimax-2.7",
     "max_agents": 2,
     "max_turns": 80,
-    "launch": false
+    "launch": false,
+    "sandbox": true,
+    "sandbox_backend": "bwrap"
   },
   "workers": {
     "local_agts": {

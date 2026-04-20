@@ -4,7 +4,7 @@ from pathlib import Path
 import time
 
 from agts_research.config import load_run_config
-from agts_research.heartbeat import heartbeat_prompt
+from agts_research.heartbeat import heartbeat_action_record, heartbeat_prompt
 from agts_research.meta import run_meta_step
 from agts_research.models import BranchStatus, MetaActionType, WorkerProcessStatus
 from agts_research.runtime import launch_workers, refresh_worker_status
@@ -31,7 +31,14 @@ def monitor_run(
             for agent in agents
             if agent.status == WorkerProcessStatus.RUNNING.value
         }
-        if state.finalized_branch_id is not None or len(state.attempts) >= cfg.search.max_evals:
+        running_worker_count = sum(1 for agent in agents if agent.status == WorkerProcessStatus.RUNNING.value)
+        worker_slots = max(0, cfg.search.max_active_branches - running_worker_count)
+        private_dev_evals = sum(
+            1
+            for attempt in state.attempts.values()
+            if attempt.metadata.get("eval_split", "private_dev") == "private_dev"
+        )
+        if state.finalized_branch_id is not None or private_dev_evals >= cfg.search.max_evals:
             if verbose:
                 print(
                     f"monitor_stop iteration={index} attempts={len(state.attempts)} "
@@ -54,11 +61,56 @@ def monitor_run(
         launched = []
         if action.type == MetaActionType.CONTINUE:
             branch = state.branches.get(action.branch_id)
-            if branch and branch.status == BranchStatus.ACTIVE and branch.branch_id not in running_branch_ids:
+            if (
+                worker_slots > 0
+                and branch
+                and branch.status == BranchStatus.ACTIVE
+                and branch.branch_id not in running_branch_ids
+            ):
                 for agent_id in branch.assigned_agents[:1]:
+                    agent = state.agents.get(agent_id)
+                    if agent is None:
+                        continue
                     prompt = heartbeat_prompt(cfg, branch, reason=action.reason)
-                    launched.extend(
-                        launch_workers(
+                    heartbeat_action_record(
+                        run_dir,
+                        cfg=cfg,
+                        iteration=index,
+                        action=action,
+                        branch=branch,
+                        agent=agent,
+                        prompt=prompt,
+                    )
+                    new_agents = launch_workers(
+                        run_dir,
+                        agent_id=agent_id,
+                        dry_run=dry_run,
+                        prompt=prompt,
+                        dry_run_seconds=dry_run_seconds,
+                        timeout_seconds=worker_timeout,
+                    )
+                    launched.extend(new_agents)
+                    worker_slots = max(0, worker_slots - len(new_agents))
+        elif action.type == MetaActionType.SPLIT:
+            for branch in state.branches.values():
+                if worker_slots <= 0:
+                    break
+                if branch.parent_id == action.branch_id and branch.branch_id not in running_branch_ids:
+                    for agent_id in branch.assigned_agents[:1]:
+                        agent = state.agents.get(agent_id)
+                        if agent is None:
+                            continue
+                        prompt = heartbeat_prompt(cfg, branch, reason=action.reason)
+                        heartbeat_action_record(
+                            run_dir,
+                            cfg=cfg,
+                            iteration=index,
+                            action=action,
+                            branch=branch,
+                            agent=agent,
+                            prompt=prompt,
+                        )
+                        new_agents = launch_workers(
                             run_dir,
                             agent_id=agent_id,
                             dry_run=dry_run,
@@ -66,22 +118,8 @@ def monitor_run(
                             dry_run_seconds=dry_run_seconds,
                             timeout_seconds=worker_timeout,
                         )
-                    )
-        elif action.type == MetaActionType.SPLIT:
-            for branch in state.branches.values():
-                if branch.parent_id == action.branch_id and branch.branch_id not in running_branch_ids:
-                    for agent_id in branch.assigned_agents[:1]:
-                        prompt = heartbeat_prompt(cfg, branch, reason=action.reason)
-                        launched.extend(
-                            launch_workers(
-                                run_dir,
-                                agent_id=agent_id,
-                                dry_run=dry_run,
-                                prompt=prompt,
-                                dry_run_seconds=dry_run_seconds,
-                                timeout_seconds=worker_timeout,
-                            )
-                        )
+                        launched.extend(new_agents)
+                        worker_slots = max(0, worker_slots - len(new_agents))
 
         tick = {
             "timestamp": time.time(),
@@ -91,12 +129,14 @@ def monitor_run(
             "branch_id": action.branch_id,
             "launched_agents": [agent.agent_id for agent in launched],
             "running_branches": sorted(running_branch_ids),
+            "running_workers": running_worker_count,
+            "worker_slots": worker_slots,
         }
         if verbose:
             print(
                 f"monitor_tick iteration={index} action={action.type.value} "
                 f"branch={action.branch_id} launched={len(launched)} "
-                f"running={len(running_branch_ids)} attempts={len(state.attempts)}",
+                f"running={running_worker_count} attempts={len(state.attempts)}",
                 flush=True,
             )
         append_jsonl(
