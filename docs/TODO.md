@@ -138,6 +138,7 @@ This tracks remaining work for `agts-research`, separate from the local `agts` t
   - branch lineage and notes
 - `[ ]` Add additional benchmark domains:
   - `[x]` algorithmic optimization: 0/1 knapsack heuristic optimization
+  - `[x]` systems optimization: expert placement load balancing
   - code repair with hidden tests
   - transformer/kernel optimization
   - literature synthesis with citation checks

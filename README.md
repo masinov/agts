@@ -139,6 +139,7 @@ Included benchmark configs:
 ```bash
 python -m agts.cli research start -c benchmarks/bin_packing/research.json
 python -m agts.cli research start -c benchmarks/knapsack/research.json
+python -m agts.cli research start -c benchmarks/eplb/research.json
 ```
 
 Launch managed workers:

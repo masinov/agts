@@ -35,6 +35,10 @@ def submit_eval(
             if not isinstance(attempt, dict):
                 raise RuntimeError("evaluator server returned no attempt")
             return hydrate_attempt(attempt)
+        if os.environ.get("AGTS_WORKER_SANDBOX") == "1":
+            raise RuntimeError(
+                "evaluator server is unavailable; refusing to run private-dev eval inside worker sandbox"
+            )
 
     with _eval_lock(run_dir):
         state = read_state(run_dir)

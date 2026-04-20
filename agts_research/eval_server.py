@@ -148,4 +148,9 @@ def _recorded_process_alive(path: Path) -> bool:
         return False
     except PermissionError:
         return True
-    return True
+    cmdline = Path(f"/proc/{pid}/cmdline")
+    try:
+        command = cmdline.read_text(encoding="utf-8", errors="ignore").replace("\x00", " ")
+    except OSError:
+        return False
+    return "agts.cli" in command and "eval-server" in command

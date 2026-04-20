@@ -11,6 +11,7 @@ from agts_research.config import ResearchConfig
 from agts_research.distill import distill_run
 from agts_research.evaluator import submit_eval
 from agts_research.evaluator import _extract_score_bundle, _is_research_changed_file, _status_for_score
+from agts_research.eval_server import _recorded_process_alive
 from agts_research.heartbeat import heartbeat_action_record, heartbeat_prompt
 from agts_research.meta import _apply_novelty_penalties, _validated_split_directions, choose_meta_action, summarize_branch
 from agts_research.meta import _global_budget_exhausted
@@ -219,6 +220,13 @@ class RunLifecycleTests(unittest.TestCase):
             self.assertEqual(updated.branches[branch.branch_id].best_attempt_id, attempt.attempt_id)
             self.assertTrue(Path(attempt.eval_log_path or "").exists())
 
+    def test_stale_eval_server_pid_is_not_ready(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            process_path = Path(tmp) / "server.process.json"
+            process_path.write_text(json.dumps({"pid": 99999999}), encoding="utf-8")
+
+            self.assertFalse(_recorded_process_alive(process_path))
+
     def test_monitor_does_not_duplicate_running_worker(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -378,6 +386,9 @@ class RunLifecycleTests(unittest.TestCase):
 
             self.assertIn("--resume", command)
             self.assertIn("session-123", command)
+            self.assertIn("--output-format", command)
+            self.assertIn("stream-json", command)
+            self.assertNotIn("--die-with-parent", command)
             self.assertEqual(command[-1], "continue")
 
     def test_worker_turn_limit_blocks_direct_relaunch(self) -> None:

@@ -262,6 +262,9 @@ def _launch_command(
         command = [
             "claude",
             "--print",
+            "--verbose",
+            "--output-format",
+            "stream-json",
             "--permission-mode",
             "bypassPermissions",
             "--model",
@@ -290,7 +293,6 @@ def _sandbox_command(
     hidden_paths = _hidden_paths(cfg, run_dir)
     sandbox = [
         "bwrap",
-        "--die-with-parent",
         "--dev-bind",
         "/",
         "/",

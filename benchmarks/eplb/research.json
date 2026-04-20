@@ -1,0 +1,62 @@
+{
+  "task": {
+    "name": "expert-placement-load-balancing",
+    "description": "Improve solver.py for expert placement load balancing. The solver receives JSON instances with devices, experts, replica count, and traffic groups. It must assign each expert to the required number of distinct devices without exceeding device memory. Optimize load balance and traffic locality. Public instances are visible in benchmarks/eplb/public_instances.json; the evaluator scores on private instances.",
+    "objective": "maximize score = hidden greedy baseline cost / candidate cost - small runtime penalty"
+  },
+  "workspace": {
+    "seed_path": "benchmarks/eplb/seed",
+    "results_dir": ".research/runs"
+  },
+  "evaluator": {
+    "type": "command",
+    "command": "python /home/datision/projects/agts/benchmarks/eplb/eval.py",
+    "final_command": "python /home/datision/projects/agts/benchmarks/eplb/eval.py",
+    "timeout": 25,
+    "direction": "maximize",
+    "private_paths": [
+      "benchmarks/eplb/private_instances.json"
+    ],
+    "holdout_paths": [
+      "benchmarks/eplb/final_instances.json"
+    ]
+  },
+  "agents": {
+    "runtime": "claude_code",
+    "model": "minimax-2.7",
+    "max_agents": 3,
+    "max_turns": 100,
+    "launch": false,
+    "sandbox": true,
+    "sandbox_backend": "bwrap",
+    "roles": [
+      "research_worker",
+      "implementation_worker",
+      "distillation_worker"
+    ]
+  },
+  "workers": {
+    "local_agts": {
+      "enabled": true,
+      "mode": "optional",
+      "max_steps": 3,
+      "before_eval": true,
+      "after_failed_eval": true,
+      "before_pivot": true
+    }
+  },
+  "search": {
+    "max_branches": 5,
+    "max_active_branches": 2,
+    "max_agents_per_branch": 2,
+    "max_evals": 30,
+    "split_threshold": 0.60,
+    "stop_threshold": 0.16,
+    "verify_before_finalize": true
+  },
+  "heartbeat": {
+    "reflect_every": 1,
+    "consolidate_every": 4,
+    "pivot_after_stall": 3
+  }
+}
