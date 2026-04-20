@@ -23,6 +23,7 @@ This tracks remaining work for `agts-research`, separate from the local `agts` t
   - `[x]` turn limits
   - `[x]` timeout handling
 - `[~]` Improve process supervision:
+  - `[x]` first-class detached `research run` command for fire-and-forget supervisor launch
   - `[x]` log tail command
   - `[x]` worker timeout
   - `[x]` auto-stop on monitor exit option

@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import argparse
 import unittest
 from pathlib import Path
 import json
+import os
 import sys
 import tempfile
 import time
 
 from agts_research.config import ResearchConfig
+from agts_research.cli import _detached_monitor_command
 from agts_research.distill import distill_run
 from agts_research.evaluator import submit_eval
 from agts_research.evaluator import _extract_score_bundle, _is_research_changed_file, _status_for_score
@@ -91,6 +94,25 @@ class EvaluatorParsingTests(unittest.TestCase):
 
 
 class RunLifecycleTests(unittest.TestCase):
+    def test_detached_research_run_uses_monitor_supervisor_command(self) -> None:
+        args = argparse.Namespace(
+            iterations=123,
+            interval=4.5,
+            worker_timeout=60.0,
+            dry_run=True,
+            dry_run_seconds=0.25,
+            quiet=True,
+        )
+        command = _detached_monitor_command(args, Path("/tmp/agts-run"))
+
+        self.assertEqual(command[:4], [sys.executable, "-m", "agts.cli", "research"])
+        self.assertIn("monitor", command)
+        self.assertIn("/tmp/agts-run", command)
+        self.assertIn("--worker-timeout", command)
+        self.assertIn("60.0", command)
+        self.assertIn("--dry-run", command)
+        self.assertIn("--quiet", command)
+
     def test_config_loading_preserves_heartbeat_registry(self) -> None:
         cfg = ResearchConfig.from_dict(
             {
@@ -390,6 +412,41 @@ class RunLifecycleTests(unittest.TestCase):
             self.assertIn("stream-json", command)
             self.assertNotIn("--die-with-parent", command)
             self.assertEqual(command[-1], "continue")
+
+    def test_bwrap_hidden_paths_are_absolute_for_relative_run_dir(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            run_dir = root / ".research" / "runs" / "unit"
+            worktree = run_dir / "worktrees" / "rb"
+            worktree.mkdir(parents=True)
+            (run_dir / "private").mkdir(parents=True)
+            cfg = ResearchConfig.from_dict(
+                {
+                    "task": {"name": "x", "description": "x"},
+                    "agents": {
+                        "runtime": "claude_code",
+                        "model": "test-model",
+                        "sandbox": True,
+                        "sandbox_backend": "bwrap",
+                    },
+                }
+            )
+            agent = AgentSpec(
+                agent_id="agent-rb-a",
+                branch_id="rb",
+                role="research_worker",
+                runtime="claude_code",
+                model="test-model",
+                worktree_path=str(worktree),
+            )
+            relative_run_dir = Path(os.path.relpath(run_dir, Path.cwd()))
+
+            command = _launch_command(cfg, relative_run_dir, agent, dry_run=False, prompt="run")
+
+            self.assertIn("--tmpfs", command)
+            tmpfs_target = command[command.index("--tmpfs") + 1]
+            self.assertTrue(Path(tmpfs_target).is_absolute())
+            self.assertEqual(Path(tmpfs_target), run_dir / "private")
 
     def test_worker_turn_limit_blocks_direct_relaunch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

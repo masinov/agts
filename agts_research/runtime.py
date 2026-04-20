@@ -310,6 +310,7 @@ def _sandbox_command(
 
 
 def _hidden_paths(cfg: ResearchConfig, run_dir: Path) -> list[Path]:
+    run_dir = run_dir.resolve()
     paths = [run_dir / "private"]
     for raw in [*cfg.evaluator.private_paths, *cfg.evaluator.holdout_paths]:
         path = Path(raw).expanduser()

@@ -3,6 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 import argparse
 import os
+import subprocess
+import sys
+import time
 
 from agts.jsonutil import dumps
 from agts_research.config import ResearchConfig, load_run_config
@@ -16,7 +19,7 @@ from agts_research.provenance import cleanup_shared_memory, refresh_provenance_i
 from agts_research.report import build_report, format_report
 from agts_research.review import review_branch
 from agts_research.runtime import launch_workers, read_agent_log, refresh_worker_status, stop_workers
-from agts_research.storage import branch_snapshots, read_state, write_state
+from agts_research.storage import branch_snapshots, read_state, write_json_atomic, write_state
 from agts_research.verifier import verification_approved, verify_branch
 from agts_research.workspace import find_run_dir_from_worktree, start_research_run
 
@@ -27,6 +30,16 @@ def add_research_subparser(subparsers: argparse._SubParsersAction) -> None:
 
     start = research_sub.add_parser("start", help="Create a research run.")
     start.add_argument("-c", "--config", required=True, type=Path)
+
+    run = research_sub.add_parser("run", help="Create a run and start the research supervisor.")
+    run.add_argument("-c", "--config", required=True, type=Path)
+    run.add_argument("--iterations", type=int, default=100000)
+    run.add_argument("--interval", type=float, default=10.0)
+    run.add_argument("--worker-timeout", type=float, default=None)
+    run.add_argument("--foreground", action="store_true", help="Run the supervisor in this terminal.")
+    run.add_argument("--dry-run", action="store_true")
+    run.add_argument("--dry-run-seconds", type=float, default=2.0)
+    run.add_argument("--quiet", action="store_true")
 
     status = research_sub.add_parser("status", help="Show research run status.")
     status.add_argument("run_dir", type=Path)
@@ -133,6 +146,8 @@ def handle_research(args: argparse.Namespace) -> int:
     command = args.research_command
     if command == "start":
         return _start(args)
+    if command == "run":
+        return _run(args)
     if command == "status":
         return _status(args)
     if command == "step":
@@ -183,6 +198,82 @@ def _start(args: argparse.Namespace) -> int:
     print(f"root_branch={next(iter(state.branches))}")
     print(f"worktree={next(iter(state.branches.values())).worktree_path}")
     return 0
+
+
+def _run(args: argparse.Namespace) -> int:
+    cfg = ResearchConfig.from_file(args.config)
+    state = start_research_run(cfg)
+    run_dir = Path(state.run_dir).resolve()
+    root_branch = next(iter(state.branches))
+    worktree = next(iter(state.branches.values())).worktree_path
+    print(f"run_dir={run_dir}")
+    print(f"root_branch={root_branch}")
+    print(f"worktree={worktree}")
+
+    if args.foreground:
+        monitor_run(
+            run_dir,
+            iterations=args.iterations,
+            interval=args.interval,
+            dry_run=args.dry_run,
+            dry_run_seconds=args.dry_run_seconds,
+            worker_timeout=args.worker_timeout,
+            verbose=not args.quiet,
+        )
+        print(f"monitor_complete run_dir={run_dir}")
+        return 0
+
+    log_path = run_dir / "public" / "supervisor.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    command = _detached_monitor_command(args, run_dir)
+    log_file = log_path.open("ab")
+    try:
+        process = subprocess.Popen(
+            command,
+            cwd=Path.cwd(),
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+    finally:
+        log_file.close()
+    write_json_atomic(
+        run_dir / "public" / "supervisor.process.json",
+        {
+            "pid": process.pid,
+            "started_at": time.time(),
+            "log": str(log_path),
+            "command": command,
+            "run_dir": str(run_dir),
+        },
+    )
+    print(f"monitor_pid={process.pid}")
+    print(f"monitor_log={log_path}")
+    print(f"supervisor_process={run_dir / 'public' / 'supervisor.process.json'}")
+    return 0
+
+
+def _detached_monitor_command(args: argparse.Namespace, run_dir: Path) -> list[str]:
+    command = [
+        sys.executable,
+        "-m",
+        "agts.cli",
+        "research",
+        "monitor",
+        str(run_dir),
+        "--iterations",
+        str(args.iterations),
+        "--interval",
+        str(args.interval),
+    ]
+    if args.worker_timeout is not None:
+        command.extend(["--worker-timeout", str(args.worker_timeout)])
+    if args.dry_run:
+        command.append("--dry-run")
+        command.extend(["--dry-run-seconds", str(args.dry_run_seconds)])
+    if args.quiet:
+        command.append("--quiet")
+    return command
 
 
 def _status(args: argparse.Namespace) -> int:

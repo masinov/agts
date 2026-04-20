@@ -58,22 +58,31 @@ The important constraint is that branches are logical JSON records. Subagents ar
 
 `agts` remains the local tree-search helper. The research system is separate and lives under the `research` subcommand.
 
-Create a durable research run:
+Create a durable research run and start the supervisor in the background:
 
 ```bash
-python -m agts.cli research start -c examples/research_smoke/research.json
+python -m agts.cli research run -c examples/research_smoke/research.json --worker-timeout 600
 ```
 
 If installed with the console scripts, the equivalent command is:
 
 ```bash
-agts-research start -c examples/research_smoke/research.json
+agts-research run -c examples/research_smoke/research.json --worker-timeout 600
 ```
 
-The command prints a `run_dir` and root branch `worktree`. From that worktree, submit an evaluated attempt:
+The command prints a `run_dir`, root branch `worktree`, supervisor PID, and supervisor log.
+The supervisor keeps running after the command returns and manages worker launch, branch
+selection, eval-budget stopping, and finalization checks. From a branch worktree, a worker can
+submit an evaluated attempt:
 
 ```bash
 ./agts-research eval -m "baseline smoke attempt"
+```
+
+For manual step-by-step operation, create only the run directory:
+
+```bash
+python -m agts.cli research start -c examples/research_smoke/research.json
 ```
 
 Inspect and advance the meta-controller:
@@ -96,7 +105,7 @@ Run one meta step and launch the selected worker turn:
 python -m agts.cli research advance <run_dir>
 ```
 
-Run a bounded monitor loop that refreshes worker status, advances the meta-controller,
+Run a bounded foreground monitor loop that refreshes worker status, advances the meta-controller,
 and launches selected worker turns:
 
 ```bash
