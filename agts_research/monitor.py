@@ -123,7 +123,19 @@ def monitor_run(
         elif action.type == MetaActionType.VERIFY:
             from agts_research.verifier import verify_branch
 
-            verify_branch(run_dir, branch_id=action.branch_id, message=action.reason)
+            result = verify_branch(run_dir, branch_id=action.branch_id, message=action.reason)
+            if result.get("approved"):
+                # Re-evaluate now that verification is complete
+                action = run_meta_step(cfg, run_dir)
+                state = read_state(run_dir)
+                launched = []
+            else:
+                # Not approved — force continue to break verify loop
+                action = MetaAction(
+                    MetaActionType.CONTINUE,
+                    action.branch_id,
+                    "verification not approved; forcing continue",
+                )
 
         tick = {
             "timestamp": time.time(),
