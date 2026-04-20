@@ -120,6 +120,10 @@ def monitor_run(
                         )
                         launched.extend(new_agents)
                         worker_slots = max(0, worker_slots - len(new_agents))
+        elif action.type == MetaActionType.VERIFY:
+            from agts_research.verifier import verify_branch
+
+            verify_branch(run_dir, branch_id=action.branch_id, message=action.reason)
 
         tick = {
             "timestamp": time.time(),
