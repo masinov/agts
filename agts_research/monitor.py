@@ -123,8 +123,16 @@ def monitor_run(
         elif action.type == MetaActionType.VERIFY:
             from agts_research.verifier import verify_branch
 
+            branch = state.branches.get(action.branch_id)
             result = verify_branch(run_dir, branch_id=action.branch_id, message=action.reason)
-            if result.get("approved"):
+            if running_worker_count == 0 or (branch and branch.branch_id not in running_branch_ids):
+                # No worker running — force continue to relaunch one
+                action = MetaAction(
+                    MetaActionType.CONTINUE,
+                    action.branch_id,
+                    "no worker running after verification; forcing continue to relaunch",
+                )
+            elif result.get("approved"):
                 # Re-evaluate now that verification is complete
                 action = run_meta_step(cfg, run_dir)
                 state = read_state(run_dir)
